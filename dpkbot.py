@@ -336,7 +336,7 @@ def find_possible_moves(old_img, new_img, are_we_white, board):
         for j in range(8):
             old_sq = get_square_img(i, j, old_img)
             new_sq = get_square_img(i, j, new_img)
-            if cv2.absdiff(old_sq, new_sq).mean() > 8:
+            if cv2.absdiff(old_sq, new_sq).mean() > 10:
                 if is_empty(new_sq):
                     if is_empty(old_sq):
                         continue
@@ -453,7 +453,7 @@ def board_changed(old, new):
         for j in range(8):
             o = get_square_img(i, j, old)
             n = get_square_img(i, j, new)
-            if cv2.absdiff(o, n).mean() > 5:
+            if cv2.absdiff(o, n).mean() > 10:
                 return True
     return False
 
@@ -492,7 +492,7 @@ def play_move(move, are_we_white, board_cordinate, bit_board, old_img):
     if promotion:
         # pyautogui.mouseUp()
         time.sleep(0.01)
-        pyautogui.click(e1, e2, clicks=3, interval=0.02)
+        pyautogui.click(e1, e2, clicks=2, interval=0.02)
         c, r = old_img.shape
         r = int(r/16)
         c = int(c/16)
@@ -519,8 +519,7 @@ def play_move(move, are_we_white, board_cordinate, bit_board, old_img):
         img = dshot.screenshot(region=board_cordinate).view()
         np.copyto(old_img, cv2.cvtColor(img, cv2.COLOR_RGB2GRAY))
     except ValueError:
-        img = dshot.screenshot()[board_cordinate[1]:board_cordinate[3],
-                                 board_cordinate[0]:board_cordinate[2]].view()
+        img = dshot.screenshot()[board_cordinate[1]:board_cordinate[3], board_cordinate[0]:board_cordinate[2]].view()
         np.copyto(old_img, cv2.cvtColor(img, cv2.COLOR_RGB2GRAY))
     # np.copyto(old_img, cv2.cvtColor(dshot.screenshot()[board_cordinate[1]:board_cordinate[3],
     #                     board_cordinate[0]:board_cordinate[2]], cv2.COLOR_RGB2GRAY))
@@ -534,8 +533,7 @@ def play_move(move, are_we_white, board_cordinate, bit_board, old_img):
             img = dshot.screenshot(region=board_cordinate).view()
             np.copyto(old_img, cv2.cvtColor(img, cv2.COLOR_RGB2GRAY))
         except ValueError:
-            img = dshot.screenshot()[
-                board_cordinate[1]:board_cordinate[3], board_cordinate[0]:board_cordinate[2]].view()
+            img = dshot.screenshot()[board_cordinate[1]:board_cordinate[3], board_cordinate[0]:board_cordinate[2]].view()
             np.copyto(old_img, cv2.cvtColor(img, cv2.COLOR_RGB2GRAY))
         print('waiting for us to move or move ', move)
     # else:
@@ -586,7 +584,7 @@ def no_pieces(board):
     return n
 
 
-def play(board, engine, thread, hash, depth, time_control, play_by_depth, online_engine):
+def play(board, engine, thread, hash, depth, time_control, play_by_depth):
     '''licensing stuffs'''
     # id = str(subprocess.check_output('wmic csproduct get uuid')
     #          ).split('\\r\\n')[1].strip('\\r').strip()
@@ -662,7 +660,7 @@ def play(board, engine, thread, hash, depth, time_control, play_by_depth, online
 
     total_moves = 0
     depth_control = 32
-    while 1 and not board.is_game_over():
+    while 1:
         if our_turn:
             # time.sleep(random.randint(0, 2))
             m = False
@@ -675,18 +673,8 @@ def play(board, engine, thread, hash, depth, time_control, play_by_depth, online
                 total_moves += 1
             else:
                 if play_by_depth:
-                    if online_engine:
-                        try:
-                            online_engine.sendall(
-                                f"{board.fen()},depth,{depth}".encode('utf-8'))
-                            m = online_engine.recv(128).decode('utf-8')
-                            print(f"OMG server responded {m}")
-                        except ConnectionRefusedError:
-                            print("Couldn't connect to server will try next time")
-                            online_engine = False
-                    else:
-                        m = str(engine.play(board, chess.engine.Limit(
-                            depth=depth), ponder=True).move)
+                    m = str(engine.play(board, chess.engine.Limit(
+                        depth=depth), ponder=True).move)
                     piece = no_pieces(board)
                     if piece < depth_control:
                         if not (piece & 1):
@@ -694,18 +682,8 @@ def play(board, engine, thread, hash, depth, time_control, play_by_depth, online
                             depth += 1
                             print('depth changed to after capture... ', depth)
                 else:
-                    if online_engine:
-                        try:
-                            online_engine.sendall(
-                                f"{board.fen()},time,{time_control}".encode('utf-8'))
-                            m = online_engine.recv(128).decode('utf-8')
-                            print(f"OMG server responded {m}")
-                        except ConnectionRefusedError:
-                            print("Couldn't connect to server will try next time")
-                            online_engine = False
-                    else:
-                        m = str(engine.play(board, chess.engine.Limit(
-                            time=time_control), ponder=True).move)
+                    m = str(engine.play(board, chess.engine.Limit(
+                        time=time_control), ponder=True).move)
                 total_moves += 1
                 print("Engine Move... ", m)
                 old_img = play_move(
@@ -722,7 +700,7 @@ def play(board, engine, thread, hash, depth, time_control, play_by_depth, online
             #print_bit_board(bit_board, are_we_white)
             our_turn = False
             # print("We moved:" + m)
-        while 1 and not board.is_game_over():
+        while 1:
             time.sleep(0.08)
             flag = 0
             # new_img = np.array(sct.grab(board_img))
@@ -740,7 +718,7 @@ def play(board, engine, thread, hash, depth, time_control, play_by_depth, online
                     flag = 1
                     break
 
-        while 1 and not board.is_game_over():
+        while 1:
             if flag:
                 break
             time.sleep(0.09)
@@ -781,21 +759,10 @@ def play(board, engine, thread, hash, depth, time_control, play_by_depth, online
 
 
 if __name__ == '__main__':
-    import socket
-    ADDR = ('35.192.43.10', 6751)
-    try:
-        online_engine = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        online_engine.connect(ADDR)
-    except ConnectionRefusedError:
-        print("Sorry couldn't connect to server")
-        online_engine = False
-    except e:
-        print(e)
-        os._exit(0)
-    thread = 1
-    ram = 32
-    depth = 5
-    play_by_depth_bool = False  # Change to true to play depthwise, False to play timewise
+    thread = 2
+    ram = 128
+    depth = 12
+    play_by_depth_bool = False
     time_control = 0.1
     import configparser
     engine = chess.engine.SimpleEngine.popen_uci('stockfish')
@@ -810,4 +777,4 @@ if __name__ == '__main__':
     except configparser.NoSectionError:
         print('Either default.ini not found or the file has syntax error..\n using default settings\n\n playing by default depth of 12')
     play(chess.Board(), engine, thread, ram,
-         depth, time_control, play_by_depth_bool, online_engine)
+                depth, time_control, play_by_depth_bool)
